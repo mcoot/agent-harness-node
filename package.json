@@ -1,0 +1,30 @@
+{
+  "name": "agent-harness-node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A minimal TypeScript Node agent harness for experimenting with Recursive Language Model ideas.",
+  "main": "dist/main.js",
+  "exports": {
+    ".": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "dev": "node --experimental-strip-types src/main.ts",
+    "start": "node dist/main.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "ai": "latest",
+    "pyodide": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}
