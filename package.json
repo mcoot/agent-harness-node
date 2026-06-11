@@ -12,13 +12,14 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
-    "dev": "node --experimental-strip-types src/main.ts",
+    "dev": "npm run build && node dist/main.js",
     "start": "node dist/main.js"
   },
   "engines": {
     "node": ">=22"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.82",
     "ai": "latest",
     "pyodide": "latest"
   },
