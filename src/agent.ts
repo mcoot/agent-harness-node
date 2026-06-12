@@ -34,7 +34,9 @@ export async function runAgentTurn(
     messages,
     tools: {
       readFile: createReadFileTool(
-        options.rootDirectory === undefined ? {} : { rootDirectory: options.rootDirectory },
+        options.rootDirectory === undefined
+          ? {}
+          : { rootDirectory: options.rootDirectory },
       ),
     },
     stopWhen: stepCountIs(maxSteps),

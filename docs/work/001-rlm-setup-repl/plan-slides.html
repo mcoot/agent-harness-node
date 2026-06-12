@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RLM REPL implementation plan</title>
+  <style>
+    :root { color-scheme: light; --bg:#f6f7fb; --card:#fff; --ink:#172033; --muted:#5b6475; --accent:#4f46e5; --green:#16834a; --amber:#b7791f; --grey:#e7e9f0; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; background:var(--bg); color:var(--ink); }
+    main { width:min(1120px, 96vw); margin:0 auto; padding:28px 0 48px; }
+    section { min-height:620px; box-sizing:border-box; margin:0 0 28px; padding:42px 52px; background:var(--card); border:1px solid #dde1ec; border-radius:24px; box-shadow:0 10px 32px rgba(23,32,51,.08); }
+    h1 { font-size:46px; line-height:1.05; margin:0 0 18px; }
+    h2 { font-size:34px; margin:0 0 22px; color:#202a44; }
+    h3 { font-size:22px; margin:22px 0 10px; }
+    p, li { font-size:21px; line-height:1.45; }
+    ul { padding-left:28px; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    pre { background:#101827; color:#e8eefc; padding:18px; border-radius:14px; overflow:auto; font-size:16px; }
+    .subtitle { color:var(--muted); font-size:24px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+    .card { border:1px solid #dfe3ee; background:#fbfcff; border-radius:18px; padding:20px; }
+    .pill { display:inline-block; padding:6px 11px; border-radius:999px; background:#eef2ff; color:var(--accent); font-weight:700; font-size:15px; margin:0 8px 8px 0; }
+    .ok { color:var(--green); font-weight:700; }
+    .warn { color:var(--amber); font-weight:700; }
+    .muted { color:var(--muted); }
+    .flow { width:100%; max-width:860px; margin:18px auto; display:block; }
+    .small li { font-size:18px; }
+    .check li { margin-bottom:10px; }
+    .footer { position:relative; top:18px; color:#7b8496; font-size:14px; }
+  </style>
+</head>
+<body>
+<main>
+  <section>
+    <h1>RLM REPL implementation plan</h1>
+    <p class="subtitle">Turn <code>docs/work/001-rlm-setup-repl/research.md</code> into an ambiguity-free two-milestone implementation plan.</p>
+    <div>
+      <span class="pill">Live streaming first</span>
+      <span class="pill">Pyodide REPL second</span>
+      <span class="pill">FINAL / FINAL_VAR required</span>
+    </div>
+    <p>The goal is to keep the harness small while moving from direct prompt/tool access to a REPL-mediated RLM loop.</p><p class="muted">Milestone 1 compatibility is transitional; after Milestone 2, only the final RLM interfaces and tests remain.</p>
+    <p class="footer">Companion file: <code>plan.md</code></p>
+  </section>
+
+  <section>
+    <h2>Problem</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Current harness</h3>
+        <ul>
+          <li><code>generateText</code> waits for turn completion.</li>
+          <li>CLI prints only final text.</li>
+          <li>Model sees raw user input directly.</li>
+          <li>Direct <code>readFile</code> tool is active.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Target harness</h3>
+        <ul>
+          <li>Live grey trace output for thinking/text/tool activity.</li>
+          <li>Single active <code>repl</code> tool.</li>
+          <li>Python <code>context</code> contains full turn state.</li>
+          <li>User-visible answer comes only from <code>FINAL</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Milestone strategy</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>1. Streaming refactor</h3>
+        <p>Switch to <code>streamText</code>, normalize stream parts, render trace events live in grey, and preserve current behavior.</p>
+        <p class="ok">Low-risk: no RLM behavior change yet.</p>
+      </div>
+      <div class="card">
+        <h3>2. RLM REPL mode</h3>
+        <p>Replace active tools with Pyodide <code>repl</code>, inject bounded <code>context</code> wrappers, capture <code>FINAL</code> / <code>FINAL_VAR</code>.</p>
+        <p class="ok">RLM semantics isolated after streaming works.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Architecture</h2>
+    <svg class="flow" xmlns="http://www.w3.org/2000/svg" width="860" height="260" viewBox="0 0 860 260" role="img" aria-label="RLM turn flow">
+      <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#555"/></marker></defs>
+      <rect x="25" y="45" width="145" height="65" rx="10" fill="#eef6ff" stroke="#6aa0d8"/><text x="97" y="73" text-anchor="middle" font-size="16" font-family="sans-serif">CLI input</text><text x="97" y="93" text-anchor="middle" font-size="12" font-family="sans-serif">full userInput</text>
+      <rect x="225" y="35" width="165" height="85" rx="10" fill="#f7f7f7" stroke="#999"/><text x="307" y="68" text-anchor="middle" font-size="16" font-family="sans-serif">Harness</text><text x="307" y="89" text-anchor="middle" font-size="12" font-family="sans-serif">preview + context</text>
+      <rect x="450" y="30" width="160" height="95" rx="10" fill="#fff8e8" stroke="#d8ad45"/><text x="530" y="64" text-anchor="middle" font-size="16" font-family="sans-serif">LLM</text><text x="530" y="85" text-anchor="middle" font-size="12" font-family="sans-serif">bounded prompt</text><text x="530" y="101" text-anchor="middle" font-size="12" font-family="sans-serif">+ repl tool</text>
+      <rect x="685" y="35" width="145" height="85" rx="10" fill="#eefaf0" stroke="#69a86f"/><text x="757" y="68" text-anchor="middle" font-size="16" font-family="sans-serif">Pyodide REPL</text><text x="757" y="89" text-anchor="middle" font-size="12" font-family="sans-serif">context + FINAL</text>
+      <path d="M170 78 L225 78" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/><path d="M390 78 L450 78" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/><path d="M610 78 L685 78" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+      <path d="M757 120 C757 205 345 205 307 122" fill="none" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/><text x="555" y="195" text-anchor="middle" font-size="14" font-family="sans-serif" fill="#555">tool result previews + captured final value</text>
+    </svg>
+    <p>Cache Pyodide runtime if useful, but create a fresh logical Python session for every user turn.</p>
+  </section>
+
+  <section>
+    <h2>Key interfaces</h2>
+    <pre>type AgentTraceEvent =
+  | { type: "assistant-text-delta"; text: string }
+  | { type: "assistant-reasoning-delta"; text: string }
+  | { type: "tool-call"; toolName: string; input: unknown }
+  | { type: "tool-result"; toolName: string; output: unknown }
+  | { type: "tool-error"; toolName: string; error: unknown }
+  | ...;
+
+type RlmContext = {
+  userInput: string;
+  history: readonly AgentConversationEntry[];
+};
+
+runAgentTurn(
+  history: readonly AgentConversationEntry[],
+  userInput: string,
+  options: AgentOptions,
+): Promise&lt;AgentTurn&gt;;</pre>
+    <p><code>AgentTurn.text</code> is captured <code>FINAL</code>/<code>FINAL_VAR</code> output only; ordinary assistant text is trace-only in RLM mode.</p>
+  </section>
+
+  <section>
+    <h2>Milestone 1: streaming refactor</h2>
+    <ul class="check">
+      <li>Add <code>src/trace.ts</code> for normalized stream events.</li>
+      <li>Replace <code>generateText</code> with <code>streamText</code>.</li>
+      <li>Iterate <code>fullStream</code> and emit <code>onTrace</code>.</li>
+      <li>Add <code>src/trace-renderer.ts</code> for grey ANSI output.</li>
+      <li>Keep <code>readFile</code> active and preserve final text behavior temporarily.</li>
+    </ul>
+    <p class="ok">Acceptance: current CLI still works, but trace output appears live. These compatibility tests are replaced by final RLM tests in Milestone 2.</p>
+  </section>
+
+  <section>
+    <h2>Milestone 1 test plan</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Unit tests</h3>
+        <ul class="small">
+          <li>Normalize text/reasoning deltas.</li>
+          <li>Normalize tool input/call/result/error parts.</li>
+          <li>Format trace events with grey/reset.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Orchestration tests</h3>
+        <ul class="small">
+          <li>Fake stream emits trace before resolution.</li>
+          <li>Returned text matches accumulated/final text.</li>
+          <li>Returned history is updated.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Milestone 2: RLM REPL mode</h2>
+    <ul class="check">
+      <li>Add <code>rlm/context.ts</code> for bounded preview generation and <code>LimitedString</code>/<code>LimitedHistory</code> behavior.</li>
+      <li>Add <code>rlm/repl.ts</code> using Pyodide's built-in console/REPL behavior, not a TypeScript reimplementation.</li>
+      <li>Add <code>tools/repl.ts</code> with schema <code>{ code: string }</code>.</li>
+      <li>Use only the <code>repl</code> tool in active model calls.</li>
+      <li>Final output comes from <code>FINAL</code> / <code>FINAL_VAR</code>, never ordinary assistant text.</li>
+    </ul>
+    <p class="warn">Default <code>maxFinalizationAttempts = 2</code> means two total attempts: initial + one reminder using the same REPL session.</p>
+  </section>
+
+  <section>
+    <h2>RLM contracts</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Context limits</h3>
+        <ul class="small">
+          <li>Prompt preview: 500 chars per top-level key.</li>
+          <li><code>userInput</code> and history content use <code>LimitedString</code>.</li>
+          <li><code>history</code> uses <code>LimitedHistory</code>.</li>
+          <li><code>len</code>, bounded slice, preview, and search helpers guide targeted reads.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Tool feedback limits</h3>
+        <ul class="small">
+          <li><code>stdout</code>: 4,000 chars.</li>
+          <li><code>stderr</code>: 4,000 chars; user-code exceptions return here.</li>
+          <li><code>resultPreview</code>: 4,000 chars from Pyodide REPL display semantics.</li>
+          <li>Captured final values are not internally truncated.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Finalization and REPL semantics</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Final output</h3>
+        <ul class="small">
+          <li><code>FINAL(str)</code> outputs the string directly.</li>
+          <li><code>FINAL(nonString)</code> / <code>FINAL_VAR</code> use sorted, 2-space pretty JSON when possible.</li>
+          <li>Non-JSON-compatible values fall back to Python <code>repr</code>.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Execution</h3>
+        <ul class="small">
+          <li>Use Pyodide <code>PyodideConsole</code> or equivalent.</li>
+          <li>No TypeScript AST parsing or REPL emulation.</li>
+          <li>No concurrency support in v1; sequential turns must be isolated.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Milestone 2 test plan</h2>
+    <ul class="check">
+      <li>Preview/context tests ensure deterministic truncation, bounded <code>LimitedString</code> display/slice behavior, and no full long input in the prompt.</li>
+      <li>REPL tests cover Pyodide console expression display, stdout, exceptions-as-stderr, <code>FINAL</code>, and <code>FINAL_VAR</code>.</li>
+      <li>Tool tests verify schema and session delegation.</li>
+      <li>Agent tests verify active tools are exactly <code>["repl"]</code>.</li>
+      <li>Finalization tests verify exact total attempt counts, same-session reminders, and clear failure if no final is set.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Invariants</h2>
+    <ul class="check">
+      <li>ESM TypeScript and Node &gt;= 22 remain unchanged.</li>
+      <li><code>typecheck</code>, <code>test</code>, and <code>build</code> remain green.</li>
+      <li>Fresh logical Python session per user turn; sequential turns do not leak globals.</li>
+      <li>RLM active tool set contains only <code>repl</code>.</li>
+      <li>User-visible final output comes only from <code>FINAL</code> / <code>FINAL_VAR</code>.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Stop-and-ask boundaries</h2>
+    <ul class="check">
+      <li>Generic recursive read limits beyond the known <code>{ userInput, history }</code> schema.</li>
+      <li>Python-side file helpers or restoring direct file tools.</li>
+      <li>Persistent Python REPL state across turns.</li>
+      <li>Changing finalization syntax.</li>
+      <li>Adding new dependencies.</li>
+      <li>Large CLI UX changes beyond grey trace + normal final output.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
