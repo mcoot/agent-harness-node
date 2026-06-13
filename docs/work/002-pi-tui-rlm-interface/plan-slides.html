@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pi TUI RLM Interface Plan</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f5f0;
+      --surface: rgba(255, 255, 255, 0.86);
+      --surface-2: #fbfaf7;
+      --ink: #18212f;
+      --muted: #607085;
+      --line: #e6e0d6;
+      --accent: #4767ff;
+      --accent-2: #14b8a6;
+      --accent-3: #f59e0b;
+      --danger: #dc2626;
+      --shadow: 0 22px 70px rgba(31, 41, 55, 0.10);
+      --radius: 28px;
+      --max: 1180px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--bg); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(71, 103, 255, 0.10), transparent 32rem),
+        radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.10), transparent 34rem),
+        var(--bg);
+    }
+    .progress-shell { position: fixed; inset: 0 0 auto 0; z-index: 20; height: 5px; background: rgba(24, 33, 47, 0.08); }
+    .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width 180ms ease; }
+    .deck-meta {
+      position: fixed; right: 1rem; top: 1rem; z-index: 19;
+      display: inline-flex; gap: 0.6rem; align-items: center;
+      padding: 0.55rem 0.75rem; border: 1px solid rgba(230,224,214,0.85);
+      border-radius: 999px; background: rgba(255,255,255,0.78);
+      box-shadow: 0 10px 35px rgba(31,41,55,0.08); backdrop-filter: blur(12px);
+      color: var(--muted); font-size: 0.82rem;
+    }
+    main { scroll-snap-type: y proximity; }
+    .slide { min-height: 100svh; padding: clamp(4.5rem, 7vw, 6.5rem) clamp(1.25rem, 4vw, 4rem); display: grid; place-items: center; scroll-snap-align: start; }
+    .card {
+      width: min(100%, var(--max)); min-height: min(74svh, 760px);
+      padding: clamp(2rem, 4vw, 4.5rem); border: 1px solid rgba(230,224,214,0.88);
+      border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow);
+      backdrop-filter: blur(14px); overflow: hidden; position: relative;
+    }
+    .compact { min-height: auto; }
+    .eyebrow { margin: 0 0 1rem; color: var(--accent); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+    h1, h2, h3 { margin: 0; line-height: 1.05; letter-spacing: -0.04em; text-wrap: balance; }
+    h1 { font-size: clamp(2.8rem, 7vw, 6rem); max-width: 13ch; }
+    h2 { font-size: clamp(2rem, 4.3vw, 4rem); max-width: 18ch; }
+    h3 { font-size: clamp(1.2rem, 2vw, 1.8rem); letter-spacing: -0.025em; }
+    p, li, td, th { color: var(--muted); font-size: clamp(0.95rem, 1.25vw, 1.12rem); line-height: 1.55; }
+    code { color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 0.08rem 0.28rem; }
+    .lead { max-width: 68ch; font-size: clamp(1.1rem, 1.7vw, 1.42rem); color: #435168; }
+    .two-col { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1.1fr); gap: clamp(2rem, 5vw, 4rem); align-items: start; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tile, .criterion, .stage, .note, .panel {
+      border: 1px solid var(--line); border-radius: 22px; background: var(--surface-2); padding: 1.15rem;
+    }
+    .tile strong, .criterion strong, .stage strong, .note strong, .panel strong { display: block; margin-bottom: 0.45rem; color: var(--ink); }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.5rem; }
+    .tag { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 0.45rem 0.7rem; background: #fff; color: var(--muted); font-size: 0.9rem; }
+    .criteria-list { display: grid; gap: 0.8rem; padding: 0; margin: 1.25rem 0 0; list-style: none; }
+    .criteria-list li { display: grid; grid-template-columns: 1.5rem 1fr; gap: 0.75rem; padding: 0.85rem 1rem; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
+    .criteria-list li::before { content: "✓"; color: var(--accent-2); font-weight: 900; }
+    .flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.9rem; margin-top: 2rem; }
+    .stage-index { display: inline-grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: rgba(71,103,255,0.12); color: var(--accent); font-weight: 800; margin-bottom: 0.7rem; }
+    .milestone-layout { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(340px, 1.05fr); gap: 1rem; margin-top: 1.4rem; }
+    .milestone-stack { display: grid; gap: 1rem; }
+    .primary { border-color: rgba(71,103,255,0.35); background: #eef2ff; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1.4rem; overflow: hidden; border-radius: 18px; }
+    th, td { text-align: left; vertical-align: top; padding: 0.85rem; border: 1px solid var(--line); background: #fff; }
+    th { color: var(--ink); background: #fbfaf7; }
+    .terminal {
+      margin-top: 1.3rem; background: #111827; color: #d1d5db; border-radius: 20px;
+      padding: 1.1rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap;
+    }
+    .callout { margin-top: 1.2rem; border-left: 4px solid var(--accent-3); background: #fffbeb; color: #7c5206; padding: 1rem; border-radius: 14px; }
+    .mermaid-wrap { margin-top: 1.2rem; padding: 1rem; border: 1px solid var(--line); border-radius: 22px; background: #fff; overflow: auto; }
+    @media (max-width: 900px) { .two-col, .milestone-layout, .flow, .grid, .grid.two { grid-template-columns: 1fr; } .card { min-height: auto; } }
+  </style>
+</head>
+<body>
+  <div class="progress-shell" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="deck-meta"><span>Pi TUI RLM plan</span><span id="slideCounter">1 / 14</span></div>
+
+  <main>
+    <section class="slide" id="title">
+      <div class="card compact">
+        <p class="eyebrow">Implementation plan</p>
+        <h1>Pi TUI for the RLM harness</h1>
+        <p class="lead">A lightweight Pi-style terminal UI with multiline input, inline transcript, concise REPL traces, and a clean harness/UI boundary.</p>
+        <div class="tag-row">
+          <span class="tag">Source: docs/work/002-pi-tui-rlm-interface/research.md</span>
+          <span class="tag">Plan: docs/work/002-pi-tui-rlm-interface/plan.md</span>
+          <span class="tag">Status: draft for review</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="problem">
+      <div class="card two-col">
+        <div>
+          <p class="eyebrow">01 · Problem</p>
+          <h2>Current CLI is too thin for RLM UX</h2>
+          <p class="lead">The readline loop mixes input, history, traces, and agent orchestration, and cannot support a comfortable trace-rich terminal experience.</p>
+        </div>
+        <div class="grid two">
+          <div class="criterion"><strong>Need</strong><p>Multiline composer, inline chronological transcript, clear final answers, and trace/tool visibility.</p></div>
+          <div class="criterion"><strong>Constraint</strong><p>Agent and REPL layers must remain independent from TUI packages and terminal concepts.</p></div>
+          <div class="criterion"><strong>Mode</strong><p>Auto TUI for interactive terminals, minimal no-TUI for <code>--no-tui</code> and non-TTY.</p></div>
+          <div class="criterion"><strong>Certainty</strong><p>Behavior must be verifiable through unit, render-model, fake-terminal, and PTY tests.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="approach">
+      <div class="card">
+        <p class="eyebrow">02 · Architecture</p>
+        <h2>Three layers, one session contract</h2>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">flowchart LR
+  Main[main.ts] --> Args[cli args]
+  Main --> Mode{TUI?}
+  Mode -->|yes| PiApp[Pi TUI app]
+  Mode -->|no| Plain[no-TUI runner]
+  PiApp --> Session[RlmSession]
+  Plain --> Session
+  Session --> Runner[AgentRunner]
+  Runner --> Agent[runAgentTurn]
+  Agent --> Repl[REPL/tools]
+  PiApp --> PiTui[pi-tui primitives]</pre>
+        </div>
+        <div class="tag-row">
+          <span class="tag">Harness: no TUI imports</span>
+          <span class="tag">Session: history + events</span>
+          <span class="tag">UI: render + input only</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="acceptance">
+      <div class="card">
+        <p class="eyebrow">03 · Overall acceptance</p>
+        <h2>Programmatically verifiable done criteria</h2>
+        <div class="terminal">npm install
+npm run typecheck
+npm test
+npm run build
+npm run test:pty</div>
+        <ul class="criteria-list">
+          <li><span><code>@earendil-works/pi-tui</code>, <code>node-pty</code>, and Node <code>&gt;=22.19.0</code> are declared in package metadata and lockfile.</span></li>
+          <li><span>Clean build removes stale <code>dist/tui/*</code> artifacts from the previous implementation attempt.</span></li>
+          <li><span>Dependency-boundary tests prove harness/agent/REPL modules do not import Pi TUI.</span></li>
+          <li><span>PTY tests validate critical UX without Anthropic, Pyodide, network, or ANSI snapshots.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="slide" id="interfaces">
+      <div class="card">
+        <p class="eyebrow">04 · Key interfaces</p>
+        <h2>AgentRunner + RlmSession</h2>
+        <div class="grid two" style="margin-top:1.4rem;">
+          <div class="panel"><strong>AgentRunner</strong><p>Injected boundary wrapping <code>runAgentTurn(history, input, { onTrace })</code>. UI code never calls AI SDK or Pyodide directly.</p></div>
+          <div class="panel"><strong>RlmSession</strong><p>Owns history, busy state, command recognition, trace forwarding, final/error events, and deterministic IDs/clocks for tests.</p></div>
+          <div class="panel"><strong>SubmitResult</strong><p><code>accepted</code>, <code>ignored: empty</code>, <code>rejected: busy</code>, or <code>exit</code>.</p></div>
+          <div class="panel"><strong>Session events</strong><p><code>turn-started</code>, <code>trace</code>, <code>turn-final</code>, <code>turn-error</code>, <code>turn-finished</code>.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="ui-model">
+      <div class="card two-col">
+        <div>
+          <p class="eyebrow">05 · UI model</p>
+          <h2>Inline transcript with global filters</h2>
+          <p class="lead">The first pass keeps state simple: user item, trace group, final answer/error, with toggles that reveal preserved trace details.</p>
+        </div>
+        <div>
+          <ul class="criteria-list">
+            <li><span>Default filters hide assistant trace, reasoning trace, and full tool details.</span></li>
+            <li><span>Concise REPL entries show tool name, code summary, status, and compact output markers.</span></li>
+            <li><span><code>Ctrl+T</code>, <code>Ctrl+A</code>, <code>Ctrl+R</code> toggle tool details, assistant trace, and reasoning.</span></li>
+            <li><span>Every custom render line must satisfy <code>visibleWidth(line) &lt;= width</code>.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="milestones-overview">
+      <div class="card">
+        <p class="eyebrow">06 · Milestones</p>
+        <h2>Autonomous implementation sequence</h2>
+        <div class="flow">
+          <div class="stage"><span class="stage-index">1</span><strong>Foundation</strong><p>Dependencies, clean build, CLI mode parsing.</p></div>
+          <div class="stage"><span class="stage-index">2</span><strong>Session</strong><p>UI-independent controller with deterministic events.</p></div>
+          <div class="stage"><span class="stage-index">3</span><strong>No-TUI</strong><p>Plain interactive and non-TTY one-shot mode.</p></div>
+          <div class="stage"><span class="stage-index">4</span><strong>State</strong><p>Pure reducer and trace display model.</p></div>
+        </div>
+        <div class="flow">
+          <div class="stage"><span class="stage-index">5</span><strong>Components</strong><p>Transcript, trace blocks, status, Markdown, composer.</p></div>
+          <div class="stage"><span class="stage-index">6</span><strong>Wiring</strong><p>Pi TUI app and main CLI integration.</p></div>
+          <div class="stage"><span class="stage-index">7</span><strong>PTY</strong><p>Critical user journeys through a fake-agent fixture.</p></div>
+          <div class="stage"><span class="stage-index">✓</span><strong>Verify</strong><p>Typecheck, unit tests, clean build, PTY tests.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="m1-m2">
+      <div class="card">
+        <p class="eyebrow">07 · Milestones 1–2</p>
+        <h2>Foundation and session bubble</h2>
+        <div class="milestone-layout">
+          <div class="milestone-stack">
+            <div class="panel primary"><strong>M1: Dependency/build/CLI foundation</strong><p>Add Pi TUI dependencies, Node engine update, clean build, and mode parser.</p></div>
+            <div class="panel"><strong>M2: Session/controller</strong><p>Add <code>AgentRunner</code> and <code>RlmSession</code> for history, events, commands, errors, and busy state.</p></div>
+          </div>
+          <div class="panel">
+            <h3>Acceptance focus</h3>
+            <ul class="criteria-list">
+              <li><span>Arg tests cover auto, forced modes, conflicts, unknown flags, and TTY checks.</span></li>
+              <li><span>Session tests cover success, trace order, errors, busy rejection, empty input, CRLF, and exit commands.</span></li>
+              <li><span>Boundary test protects agent/REPL modules from TUI imports.</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="m3-m4">
+      <div class="card">
+        <p class="eyebrow">08 · Milestones 3–4</p>
+        <h2>Plain mode and pure UI state</h2>
+        <div class="milestone-layout">
+          <div class="milestone-stack">
+            <div class="panel primary"><strong>M3: No-TUI runner</strong><p>Move plain behavior into <code>src/cli/no-tui.ts</code> using the same session contract.</p></div>
+            <div class="panel"><strong>M4: TUI state + trace log</strong><p>Map trace events into deterministic display entries and reducer-managed transcript state.</p></div>
+          </div>
+          <div class="panel">
+            <h3>Acceptance focus</h3>
+            <ul class="criteria-list">
+              <li><span>No-TUI tests cover interactive success, errors, <code>/exit</code>, and non-TTY one-shot stdin.</span></li>
+              <li><span>Trace-log tests cover all <code>AgentTraceEvent</code> variants and REPL status classification.</span></li>
+              <li><span>State tests prove filters hide by default without losing detail data.</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="m5-m6">
+      <div class="card">
+        <p class="eyebrow">09 · Milestones 5–6</p>
+        <h2>Components and app integration</h2>
+        <div class="milestone-layout">
+          <div class="milestone-stack">
+            <div class="panel primary"><strong>M5: TUI components</strong><p>Transcript, trace blocks, status line, Markdown final answers, and Editor-based composer.</p></div>
+            <div class="panel"><strong>M6: Pi TUI app wiring</strong><p>Create <code>runPiTuiApp</code>, connect session events to state, and integrate with <code>main.ts</code>.</p></div>
+          </div>
+          <div class="panel">
+            <h3>Acceptance focus</h3>
+            <ul class="criteria-list">
+              <li><span>Render tests assert line width at 18, 40, and 100 columns.</span></li>
+              <li><span>Collapsed/expanded REPL, assistant trace, reasoning, and Markdown behavior are tested.</span></li>
+              <li><span>Forced TUI on non-TTY fails clearly; auto mode falls back to no-TUI.</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="m7">
+      <div class="card">
+        <p class="eyebrow">10 · Milestone 7</p>
+        <h2>PTY user journeys</h2>
+        <p class="lead">A plain JS fixture imports built <code>dist</code> modules and wires a fake agent runner, so UX tests are deterministic and credential-free.</p>
+        <table>
+          <thead><tr><th>Journey</th><th>Assertion style</th></tr></thead>
+          <tbody>
+            <tr><td>Startup</td><td>Visible header/status/composer appears.</td></tr>
+            <tr><td>Submit</td><td>User text, concise REPL trace, and final answer appear in order.</td></tr>
+            <tr><td>Multiline fallback</td><td>Backslash-enter submits prompt with newline preserved.</td></tr>
+            <tr><td>Tool details</td><td><code>Ctrl+T</code> reveals code/output details hidden by default.</td></tr>
+            <tr><td>Exit</td><td><code>/exit</code> or idle <code>Ctrl+C</code> exits within timeout.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="slide" id="manual">
+      <div class="card two-col">
+        <div>
+          <p class="eyebrow">11 · User verification</p>
+          <h2>How reviewers can try it</h2>
+          <div class="terminal">npm run build
+node dist/main.js --no-tui
+node dist/main.js --tui</div>
+        </div>
+        <div>
+          <ul class="criteria-list">
+            <li><span>Default interactive launch opens the TUI.</span></li>
+            <li><span><code>--no-tui</code> keeps a simple prompt and plain trace rendering.</span></li>
+            <li><span>Transcript distinguishes user, final answer, trace, REPL, and errors.</span></li>
+            <li><span><code>/exit</code>, <code>/quit</code>, and idle <code>Ctrl+C</code> exit cleanly.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="invariants">
+      <div class="card two-col">
+        <div>
+          <p class="eyebrow">12 · Invariants</p>
+          <h2>What must not change?</h2>
+          <p class="lead">These constraints are regression guards throughout implementation.</p>
+        </div>
+        <div class="grid two">
+          <div class="criterion"><strong>Harness isolation</strong><p>No Pi TUI imports in agent, trace, REPL, or tool modules.</p></div>
+          <div class="criterion"><strong>RLM semantics</strong><p>Final answers still come only from <code>FINAL</code>/<code>FINAL_VAR</code>.</p></div>
+          <div class="criterion"><strong>No-TUI simplicity</strong><p>Plain mode does not duplicate TUI filters or state.</p></div>
+          <div class="criterion"><strong>No fake production path</strong><p>Fake agent behavior lives only in test fixtures.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="stop">
+      <div class="card">
+        <p class="eyebrow">13 · Stop-and-ask</p>
+        <h2>Pause if these assumptions break</h2>
+        <ul class="criteria-list">
+          <li><span>Pi TUI cannot install/typecheck under Node <code>&gt;=22.19.0</code>.</span></li>
+          <li><span>Installed Editor behavior differs from researched submit/newline/backslash-enter behavior.</span></li>
+          <li><span><code>Ctrl+Enter</code> requires invasive keybinding changes beyond a local wrapper.</span></li>
+          <li><span>Clean shutdown while a turn runs requires adding cancellation to <code>runAgentTurn</code>.</span></li>
+          <li><span>PTY tests require more new dependencies than approved <code>node-pty</code>.</span></li>
+        </ul>
+        <div class="callout">If none of these boundaries are crossed, the plan is ready for autonomous implementation with TDD.</div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      themeVariables: {
+        background: "#ffffff",
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#18212f",
+        primaryBorderColor: "#4767ff",
+        lineColor: "#607085",
+        secondaryColor: "#ecfeff",
+        tertiaryColor: "#fbfaf7"
+      }
+    });
+
+    const slides = [...document.querySelectorAll(".slide")];
+    const progressBar = document.querySelector("#progressBar");
+    const slideCounter = document.querySelector("#slideCounter");
+    let activeIndex = 0;
+    let scrollFrame = 0;
+    let programmaticTargetIndex = null;
+
+    function clamp(value, min, max) { return Math.min(Math.max(value, min), max); }
+    function updateProgress(index) {
+      const percent = slides.length <= 1 ? 100 : ((index + 1) / slides.length) * 100;
+      progressBar.style.width = `${percent}%`;
+      slideCounter.textContent = `${index + 1} / ${slides.length}`;
+    }
+    function setActive(index, { shouldScroll = false } = {}) {
+      activeIndex = clamp(index, 0, slides.length - 1);
+      updateProgress(activeIndex);
+      if (!shouldScroll) return;
+      programmaticTargetIndex = activeIndex;
+      slides[activeIndex].scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    function nearestSlideIndex() {
+      const viewportCenter = window.innerHeight / 2;
+      return slides.reduce((nearest, slide, index) => {
+        const rect = slide.getBoundingClientRect();
+        const distance = Math.abs(rect.top + rect.height / 2 - viewportCenter);
+        return distance < nearest.distance ? { index, distance } : nearest;
+      }, { index: 0, distance: Infinity }).index;
+    }
+    function updateActiveFromScroll() {
+      scrollFrame = 0;
+      if (programmaticTargetIndex !== null) {
+        const targetTop = slides[programmaticTargetIndex].getBoundingClientRect().top;
+        const reachedTarget = Math.abs(targetTop) <= Math.max(4, window.innerHeight * 0.015);
+        if (!reachedTarget) return;
+        programmaticTargetIndex = null;
+      }
+      const nearest = nearestSlideIndex();
+      if (nearest !== activeIndex) setActive(nearest);
+    }
+    function requestScrollUpdate() {
+      if (scrollFrame) return;
+      scrollFrame = window.requestAnimationFrame(updateActiveFromScroll);
+    }
+    function cancelProgrammaticNavigation() {
+      if (programmaticTargetIndex === null) return;
+      programmaticTargetIndex = null;
+      requestScrollUpdate();
+    }
+
+    window.addEventListener("scroll", requestScrollUpdate, { passive: true });
+    window.addEventListener("scrollend", cancelProgrammaticNavigation);
+    window.addEventListener("wheel", cancelProgrammaticNavigation, { passive: true });
+    window.addEventListener("touchstart", cancelProgrammaticNavigation, { passive: true });
+    window.addEventListener("pointerdown", cancelProgrammaticNavigation);
+    window.addEventListener("resize", requestScrollUpdate);
+    setActive(nearestSlideIndex());
+
+    window.addEventListener("keydown", (event) => {
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) return;
+      const nextKeys = ["ArrowRight", "ArrowDown", "PageDown", " "];
+      const prevKeys = ["ArrowLeft", "ArrowUp", "PageUp"];
+      if (nextKeys.includes(event.key)) {
+        event.preventDefault();
+        setActive(activeIndex + 1, { shouldScroll: true });
+      } else if (prevKeys.includes(event.key)) {
+        event.preventDefault();
+        setActive(activeIndex - 1, { shouldScroll: true });
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        setActive(0, { shouldScroll: true });
+      } else if (event.key === "End") {
+        event.preventDefault();
+        setActive(slides.length - 1, { shouldScroll: true });
+      }
+    });
+  </script>
+</body>
+</html>
