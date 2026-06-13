@@ -253,14 +253,14 @@ Replace `generateText` with `streamText` while preserving the existing direct-ch
 
 ### Task checklist
 
-- [ ] Add `src/trace.ts` with `AgentTraceEvent` and a `normalizeTextStreamPart(part)` helper.
-- [ ] Update `AgentOptions` to include `onTrace`.
-- [ ] Replace `generateText` with `streamText` in `src/agent.ts`.
-- [ ] Iterate `result.fullStream`, emit normalized events, and accumulate assistant text deltas for compatibility.
-- [ ] Await `result.response` after stream consumption and update returned messages using `result.response.messages`.
-- [ ] Add `src/trace-renderer.ts` with ANSI grey/reset helpers and `renderTraceEvent`.
-- [ ] Update `src/main.ts` to pass an `onTrace` callback and print the final `turn.text` normally.
-- [ ] Keep `createReadFileTool` unchanged and active.
+- [x] Add `src/trace.ts` with `AgentTraceEvent` and a `normalizeTextStreamPart(part)` helper.
+- [x] Update `AgentOptions` to include `onTrace`.
+- [x] Replace `generateText` with `streamText` in `src/agent.ts`.
+- [x] Iterate `result.fullStream`, emit normalized events, and accumulate assistant text deltas for compatibility.
+- [x] Await `result.response` after stream consumption and update returned messages using `result.response.messages`.
+- [x] Add `src/trace-renderer.ts` with ANSI grey/reset helpers and `renderTraceEvent`.
+- [x] Update `src/main.ts` to pass an `onTrace` callback and print the final `turn.text` normally.
+- [x] Keep `createReadFileTool` unchanged and active.
 
 ### Test plan for TDD
 
@@ -307,21 +307,21 @@ Replace direct model access to the raw user input and active file tools with a s
 
 ### Task checklist
 
-- [ ] Add `AgentConversationEntry` and migrate `main.ts` history from `ModelMessage[]` to this type.
-- [ ] Add `src/rlm/context.ts` with `RlmContext`, deterministic JSON-compatible conversion, preview generation, truncation helpers, and schema-specific wrapper source/helpers for `LimitedString` and `LimitedHistory`.
-- [ ] Add unit tests for preview generation and truncation markers.
-- [ ] Add `src/rlm/repl.ts` with process-wide Pyodide runtime caching and fresh per-turn namespace/session creation.
-- [ ] Inject Python `context`, `FINAL`, `FINAL_VAR`, `LimitedString`, `LimitedHistory`, and any helper/wrapper code into each session.
-- [ ] Capture stdout/stderr around executed code.
-- [ ] Return bounded stdout/stderr/result previews from `execute`.
-- [ ] Store untruncated final values internally and expose `getFinalOutput()`.
-- [ ] Add `src/tools/repl.ts` with the AI SDK tool schema and execute wrapper.
-- [ ] Replace active tools in `src/agent.ts` with only `repl`.
-- [ ] Replace raw user prompt construction with the bounded RLM turn-initialization message.
-- [ ] Add the RLM system prompt.
-- [ ] Add finalization-attempt loop using `maxFinalizationAttempts ?? 2`, where the value is total attempts including the initial attempt.
-- [ ] Update CLI rendering so ordinary assistant text remains grey trace, while `turn.text` is the captured final value.
-- [ ] Leave `src/tools/read-file.ts` in the repo but unused by RLM mode.
+- [x] Add `AgentConversationEntry` and migrate `main.ts` history from `ModelMessage[]` to this type.
+- [x] Add `src/rlm/context.ts` with `RlmContext`, deterministic JSON-compatible conversion, preview generation, truncation helpers, and schema-specific wrapper source/helpers for `LimitedString` and `LimitedHistory`.
+- [x] Add unit tests for preview generation and truncation markers.
+- [x] Add `src/rlm/repl.ts` with process-wide Pyodide runtime caching and fresh per-turn namespace/session creation.
+- [x] Inject Python `context`, `FINAL`, `FINAL_VAR`, `LimitedString`, `LimitedHistory`, and any helper/wrapper code into each session.
+- [x] Capture stdout/stderr around executed code.
+- [x] Return bounded stdout/stderr/result previews from `execute`.
+- [x] Store untruncated final values internally and expose `getFinalOutput()`.
+- [x] Add `src/tools/repl.ts` with the AI SDK tool schema and execute wrapper.
+- [x] Replace active tools in `src/agent.ts` with only `repl`.
+- [x] Replace raw user prompt construction with the bounded RLM turn-initialization message.
+- [x] Add the RLM system prompt.
+- [x] Add finalization-attempt loop using `maxFinalizationAttempts ?? 2`, where the value is total attempts including the initial attempt.
+- [x] Update CLI rendering so ordinary assistant text remains grey trace, while `turn.text` is the captured final value.
+- [x] Leave `src/tools/read-file.ts` in the repo but unused by RLM mode.
 
 ### Test plan for TDD
 
