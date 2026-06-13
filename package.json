@@ -9,22 +9,26 @@
     ".": "./dist/main.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run --passWithNoTests --exclude tests/pty/**",
+    "test:pty": "npm run build && vitest run --passWithNoTests tests/pty/*.test.ts",
     "dev": "npm run build && node dist/main.js",
     "start": "node dist/main.js"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.19.0"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.82",
+    "@earendil-works/pi-tui": "^0.79.3",
     "ai": "latest",
     "pyodide": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
+    "node-pty": "^1.1.0",
     "typescript": "latest",
     "vitest": "latest"
   }
