@@ -1,5 +1,6 @@
 import { truncateToWidth, type Component } from "@earendil-works/pi-tui";
 import type { TuiState } from "../state.js";
+import { tuiStyle } from "../style.js";
 
 export class StatusLine implements Component {
   constructor(
@@ -19,7 +20,7 @@ export class StatusLine implements Component {
     ].join(" ");
     const status = this.state.runningTurnId === undefined ? "idle" : "running";
     const message = this.state.statusMessage === undefined ? "Enter submit • \\+Enter newline • Ctrl+T/A/R filters • Ctrl+C exit" : this.state.statusMessage;
-    return [truncateToWidth(`Model: ${this.model} • ${status} • ${filters}`, Math.max(1, width)), truncateToWidth(message, Math.max(1, width))];
+    return [truncateToWidth(tuiStyle.muted(`Model: ${this.model} • ${status} • ${filters}`), Math.max(1, width)), truncateToWidth(tuiStyle.muted(message), Math.max(1, width))];
   }
 
   invalidate(): void {}

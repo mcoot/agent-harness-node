@@ -1,5 +1,6 @@
 import { Markdown, truncateToWidth, wrapTextWithAnsi, type Component } from "@earendil-works/pi-tui";
 import type { TuiState, TranscriptItem } from "../state.js";
+import { tuiStyle } from "../style.js";
 import { createMarkdownTheme } from "./markdown-theme.js";
 import { renderTraceEntries } from "./trace-block.js";
 
@@ -16,15 +17,15 @@ function wrap(text: string, width: number): string[] {
 function renderItem(item: TranscriptItem, state: TuiState, width: number): string[] {
   switch (item.kind) {
     case "user":
-      return [`${truncateToWidth("You:", safeWidth(width))}`, ...item.text.split("\n").flatMap((line) => wrap(`  ${line}`, width))];
+      return [truncateToWidth(tuiStyle.userLabel("You:"), safeWidth(width)), ...item.text.split("\n").flatMap((line) => wrap(`  ${line}`, width))];
     case "trace-group":
       return renderTraceEntries(item.entries, state.filters, width).map((line) => truncateToWidth(`  ${line}`, safeWidth(width)));
     case "assistant-final": {
-      const markdown = new Markdown(item.markdown, 0, 0, createMarkdownTheme());
-      return [truncateToWidth("Assistant:", safeWidth(width)), ...markdown.render(safeWidth(width)).map((line) => truncateToWidth(`  ${line}`, safeWidth(width)))];
+      const markdown = new Markdown(item.markdown, 0, 0, createMarkdownTheme(), { color: tuiStyle.finalText });
+      return [truncateToWidth(tuiStyle.finalLabel("Assistant:"), safeWidth(width)), ...markdown.render(safeWidth(width)).map((line) => truncateToWidth(`  ${line}`, safeWidth(width)))];
     }
     case "error":
-      return wrap(`Agent error: ${item.message}`, width);
+      return wrap(tuiStyle.error(`Agent error: ${item.message}`), width);
   }
 }
 
@@ -37,7 +38,7 @@ export class Transcript implements Component {
 
   render(width: number): string[] {
     const w = safeWidth(width);
-    if (this.state.items.length === 0) return [truncateToWidth("RLM harness ready.", w)];
+    if (this.state.items.length === 0) return [truncateToWidth(tuiStyle.muted("RLM harness ready."), w)];
     const lines: string[] = [];
     for (const item of this.state.items) {
       if (lines.length > 0) lines.push("");

@@ -7,6 +7,9 @@ import { renderTraceEntries } from "../src/tui/components/trace-block.js";
 import type { TuiState } from "../src/tui/state.js";
 import { traceEventToDisplayEntries } from "../src/tui/trace-log.js";
 
+const stripAnsi = (text: string) => text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "");
+const hasAnsi = (text: string) => /\x1b\[[0-?]*[ -/]*[@-~]/.test(text);
+
 function assertWidths(lines: string[], width: number) {
   for (const line of lines) expect(visibleWidth(line), line).toBeLessThanOrEqual(width);
 }
@@ -55,7 +58,7 @@ describe("TUI components", () => {
   });
 
   it("collapses and expands tool details via filters", () => {
-    const collapsed = new Transcript(state({ showReasoning: false, showAssistantTrace: false, showToolDetails: false })).render(80).join("\n");
+    const collapsed = stripAnsi(new Transcript(state({ showReasoning: false, showAssistantTrace: false, showToolDetails: false })).render(80).join("\n"));
     expect(collapsed).toContain("[repl] x = 1");
     expect(collapsed).toContain("[repl final-set] stdout + result + final");
     expect(collapsed).not.toContain("FULL_CODE_MARKER");
@@ -63,7 +66,7 @@ describe("TUI components", () => {
     expect(collapsed).not.toContain("ASSISTANT_TRACE_MARKER");
     expect(collapsed).not.toContain("REASONING_MARKER");
 
-    const expanded = new Transcript(state({ showReasoning: true, showAssistantTrace: true, showToolDetails: true })).render(120).join("\n");
+    const expanded = stripAnsi(new Transcript(state({ showReasoning: true, showAssistantTrace: true, showToolDetails: true })).render(120).join("\n"));
     expect(expanded).toContain("FULL_CODE_MARKER");
     expect(expanded).toContain("stdout: STDOUT_FULL_MARKER");
     expect(expanded).toContain("resultPreview: RESULT_FULL_MARKER");
@@ -73,10 +76,19 @@ describe("TUI components", () => {
   });
 
   it("renders final markdown to stable visible text", () => {
-    const rendered = new Transcript(state({ showReasoning: false, showAssistantTrace: false, showToolDetails: false })).render(80).join("\n");
+    const rendered = stripAnsi(new Transcript(state({ showReasoning: false, showAssistantTrace: false, showToolDetails: false })).render(80).join("\n"));
     expect(rendered).toContain("Heading");
     expect(rendered).toContain("item");
     expect(rendered).toContain("print(1)");
+  });
+
+  it("uses ANSI styling for final answers, thinking, and syntax-highlighted REPL code", () => {
+    const rendered = new Transcript(state({ showReasoning: true, showAssistantTrace: true, showToolDetails: true })).render(120).join("\n");
+    expect(hasAnsi(rendered)).toBe(true);
+    expect(rendered).toMatch(/\x1b\[[0-?]*[ -/]*[@-~].*Assistant:/s);
+    expect(rendered).toMatch(/\x1b\[[0-?]*[ -/]*[@-~].*REASONING_MARKER/s);
+    expect(rendered).toMatch(/\x1b\[[0-?]*[ -/]*[@-~].*FULL_CODE_MARKER/s);
+    expect(stripAnsi(rendered)).toContain("python:");
   });
 
   it("supports composer submit aliases", () => {
@@ -94,9 +106,9 @@ describe("TUI components", () => {
     const entries = state({ showReasoning: true, showAssistantTrace: true, showToolDetails: true }).items[1];
     expect(entries?.kind).toBe("trace-group");
     if (entries?.kind === "trace-group") {
-      const hidden = renderTraceEntries(entries.entries, { showReasoning: false, showAssistantTrace: false, showToolDetails: false }, 80).join("\n");
+      const hidden = stripAnsi(renderTraceEntries(entries.entries, { showReasoning: false, showAssistantTrace: false, showToolDetails: false }, 80).join("\n"));
       expect(hidden).not.toContain("REASONING_MARKER");
-      const shown = renderTraceEntries(entries.entries, { showReasoning: true, showAssistantTrace: false, showToolDetails: false }, 80).join("\n");
+      const shown = stripAnsi(renderTraceEntries(entries.entries, { showReasoning: true, showAssistantTrace: false, showToolDetails: false }, 80).join("\n"));
       expect(shown).toContain("REASONING_MARKER");
     }
   });

@@ -2,6 +2,7 @@ import { Key, matchesKey, truncateToWidth, type Component, type Focusable, type 
 import type { RlmSession, HarnessSessionEvent } from "../../session/rlm-session.js";
 import { createInitialTuiState, tuiReducer, type TuiState } from "../state.js";
 import { Composer } from "./composer.js";
+import { tuiStyle } from "../style.js";
 import { StatusLine } from "./status-line.js";
 import { Transcript } from "./transcript.js";
 
@@ -97,11 +98,11 @@ export class RlmApp implements Component, Focusable {
     const w = Math.max(1, width);
     const separator = truncateToWidth("─".repeat(Math.max(1, w)), w, "");
     return [
-      truncateToWidth("RLM Harness", w),
+      truncateToWidth(tuiStyle.appTitle("RLM Harness"), w),
       ...this.transcript.render(w),
       separator,
       ...this.statusLine.render(w),
-      truncateToWidth("Prompt:", w),
+      truncateToWidth(tuiStyle.userLabel("Prompt:"), w),
       ...this.composer.render(w),
     ].map((line) => truncateToWidth(line, w));
   }

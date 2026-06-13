@@ -1,5 +1,7 @@
 import { truncateToWidth, wrapTextWithAnsi, type Component } from "@earendil-works/pi-tui";
 import type { TraceFilters } from "../state.js";
+import { highlightCode, highlightInlineCode } from "../syntax-highlight.js";
+import { tuiStyle, type StyleFn } from "../style.js";
 import type { TraceDisplayEntry } from "../trace-log.js";
 
 function safeWidth(width: number): number {
@@ -12,33 +14,66 @@ function wrapLine(text: string, width: number): string[] {
   return wrapped.length === 0 ? [""] : wrapped.map((line) => truncateToWidth(line, w));
 }
 
+function styledWrapLine(text: string, width: number, style: StyleFn): string[] {
+  return wrapLine(style(text), width);
+}
+
+function detailLines(detail: string, width: number, options?: { language?: string; indent?: string; style?: StyleFn }): string[] {
+  const indent = options?.indent ?? "  ";
+  const highlighted = options?.language === undefined ? detail.split("\n") : highlightCode(detail, options.language);
+  return highlighted.flatMap((line) => wrapLine(`${indent}${options?.style === undefined ? line : options.style(line)}`, width));
+}
+
+function toolResultStyle(status: Extract<TraceDisplayEntry, { kind: "tool-result" }>["status"]): StyleFn {
+  switch (status) {
+    case "error":
+    case "stderr":
+      return tuiStyle.error;
+    case "final-set":
+      return tuiStyle.toolSuccess;
+    case "ok":
+      return tuiStyle.toolResult;
+  }
+}
+
+function toolCallSummary(entry: Extract<TraceDisplayEntry, { kind: "tool-call" }>): string {
+  if (entry.toolName !== "repl") return entry.summary;
+  return highlightInlineCode(entry.summary, "python");
+}
+
 function entryLines(entry: TraceDisplayEntry, filters: TraceFilters, width: number): string[] {
   switch (entry.kind) {
     case "assistant-text":
-      return filters.showAssistantTrace ? wrapLine(`assistant: ${entry.text}`, width) : [];
+      return filters.showAssistantTrace ? styledWrapLine(`assistant trace: ${entry.text}`, width, tuiStyle.assistantTrace) : [];
     case "reasoning":
-      return filters.showReasoning ? wrapLine(`reasoning: ${entry.text}`, width) : [];
+      return filters.showReasoning ? styledWrapLine(`thinking: ${entry.text}`, width, tuiStyle.reasoning) : [];
     case "step":
-      return wrapLine(`[step ${entry.label}${entry.stepNumber === undefined ? "" : ` ${entry.stepNumber}`}]`, width);
+      return styledWrapLine(`[step ${entry.label}${entry.stepNumber === undefined ? "" : ` ${entry.stepNumber}`}]`, width, tuiStyle.muted);
     case "tool-input":
-      return filters.showToolDetails ? wrapLine(`[${entry.toolName} input] ${entry.text}`, width) : [];
+      return filters.showToolDetails ? styledWrapLine(`[${entry.toolName} input] ${entry.text}`, width, tuiStyle.toolInput) : [];
     case "tool-call": {
-      const lines = wrapLine(`[${entry.toolName}] ${entry.summary}`, width);
+      const lines = wrapLine(`${tuiStyle.toolHeader(`[${entry.toolName}]`)} ${toolCallSummary(entry)}`, width);
       if (filters.showToolDetails && entry.detail !== undefined) {
-        lines.push(...wrapLine("code:", width));
-        for (const line of entry.detail.split("\n")) lines.push(...wrapLine(`  ${line}`, width));
+        if (entry.toolName === "repl") {
+          lines.push(...styledWrapLine("python:", width, tuiStyle.muted));
+          lines.push(...detailLines(entry.detail, width, { language: "python" }));
+        } else {
+          lines.push(...styledWrapLine("input:", width, tuiStyle.muted));
+          lines.push(...detailLines(entry.detail, width, { style: tuiStyle.toolInput }));
+        }
       }
       return lines;
     }
     case "tool-result": {
-      const lines = wrapLine(`[${entry.toolName} ${entry.status}] ${entry.summary}`, width);
+      const style = toolResultStyle(entry.status);
+      const lines = styledWrapLine(`[${entry.toolName} ${entry.status}] ${entry.summary}`, width, style);
       if (filters.showToolDetails && entry.detail !== undefined) {
-        for (const line of entry.detail.split("\n")) lines.push(...wrapLine(`  ${line}`, width));
+        lines.push(...detailLines(entry.detail, width, { style: entry.status === "error" || entry.status === "stderr" ? tuiStyle.error : tuiStyle.muted }));
       }
       return lines;
     }
     case "finish":
-      return wrapLine("[finish]", width);
+      return styledWrapLine("[finish]", width, tuiStyle.muted);
   }
 }
 
